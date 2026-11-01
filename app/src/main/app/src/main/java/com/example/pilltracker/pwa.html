@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Мои Таблетки - PWA Трекер</title>
+    
+    <!-- PWA / iOS Web App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Таблетки">
+    <meta name="theme-color" content="#4f46e5">
+
+    <!-- Web App Manifest (Embedded via Data URL) -->
+    <link rel="manifest" id="manifest-placeholder">
+
+    <!-- Tailwind CSS for UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between pb-20 select-none">
+
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white p-4 pt-8 shadow-md rounded-b-2xl sticky top-0 z-20">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-pills"></i> Мои Таблетки
+                </h1>
+                <p class="text-xs text-indigo-200">Трекер приема и истории</p>
+            </div>
+            <button id="pwaInstallBtn" onclick="installPWA()" class="hidden bg-indigo-500 hover:bg-indigo-400 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1 shadow">
+                <i class="fa-solid fa-download"></i> Скачать
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-md mx-auto w-full p-4 space-y-4 flex-1">
+
+        <!-- Banner for Mobile Add to Home Screen Instructions -->
+        <div id="iosInstruction" class="hidden bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs flex items-start gap-2 shadow-sm">
+            <i class="fa-solid fa-circle-info text-amber-500 text-base mt-0.5">
+                <!-- SVG Icon fallback -->
+            </i>
+            <div>
+                <strong>Установка на iPhone:</strong> Нажмите кнопку 
+                <span class="inline-block bg-white px-1 rounded shadow-sm border"><i class="fa-solid fa-share-from-square"></i> Поделиться</span> 
+                в Safari и выберите <strong>«На экран "Домой"»</strong>.
+            </div>
+        </div>
+
+        <!-- TAB 1: TODAY / MAIN TRACKER -->
+        <div id="tabToday" class="space-y-4">
+            <!-- Counter Card -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm text-center border border-slate-200">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Сегодня выпито</span>
+                <div class="text-6xl font-extrabold text-indigo-600 my-2" id="todayCount">0</div>
+                <div class="text-xs text-slate-500" id="todaySubtitle">таблеток за сегодня</div>
+
+                <!-- Add Button -->
+                <div class="mt-6 flex flex-col gap-2">
+                    <button onclick="logPill()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/30 text-lg transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus-circle text-xl"></i> Я выпил таблетку (+1)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Reminder Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-bell text-amber-500"></i> Напоминание
+                    </h2>
+                    <span id="reminderStatus" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">Выкл</span>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                    <input type="time" id="reminderTime" class="bg-slate-50 border border-slate-300 text-slate-800 text-lg rounded-xl p-2.5 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <button onclick="saveReminder()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-3 rounded-xl transition text-sm">
+                        Установить
+                    </button>
+                </div>
+                <p class="text-xs text-slate-400">Приложение отправит звуковой сигнал и уведомление в указанное время.</p>
+            </div>
+
+            <!-- Quick View of Today's Log -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="font-bold text-sm text-slate-700 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> Приемы за сегодня
+                </h3>
+                <div id="todayLogList" class="space-y-2 text-sm text-slate-600">
+                    <div class="text-center text-slate-400 py-4 text-xs">Сегодня записей еще нет</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: HISTORY -->
+        <div id="tabHistory" class="hidden space-y-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <!-- Month Header Navigation -->
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="changeMonth(-1)" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+                    <h2 id="calendarMonthTitle" class="font-bold text-slate-800 text-base flex items-center gap-2">
+                        <!-- Month Year text here -->
+                    </h2>
+                    <button onclick="changeMonth(1)" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Days of week header -->
+                <div class="grid grid-cols-7 gap-1 text-center font-semibold text-xs text-slate-400 mb-2">
+                    <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div class="text-rose-400">Сб</div><div class="text-rose-400">Вс</div>
+                </div>
+
+                <!-- Calendar Days Grid -->
+                <div id="calendarGrid" class="grid grid-cols-7 gap-1.5">
+                    <!-- Dynamic Days -->
+                </div>
+            </div>
+
+            <!-- Selected Date Details Modal / Card -->
+            <div id="selectedDayDetails" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 id="selectedDayTitle" class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-day text-indigo-600"></i> Выберите день на календаре
+                    </h3>
+                    <button onclick="clearAllData()" class="text-xs text-rose-500 hover:underline">Очистить всю историю</button>
+                </div>
+                <div id="selectedDayLogs" class="space-y-2 text-sm">
+                    <div class="text-center text-slate-400 py-4 text-xs">Нажмите на любой день в календаре выше, чтобы посмотреть время приемов</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2 px-6 shadow-lg z-30">
+        <div class="max-w-md mx-auto flex justify-around">
+            <button onclick="switchTab('today')" id="navToday" class="flex flex-col items-center text-indigo-600 font-semibold transition">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span class="text-xs mt-1">Главная</span>
+            </button>
+            <button onclick="switchTab('history')" id="navHistory" class="flex flex-col items-center text-slate-400 hover:text-indigo-600 font-medium transition">
+                <i class="fa-solid fa-calendar-check text-lg"></i>
+                <span class="text-xs mt-1">История</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Modal Notification Alert / Sound Simulator -->
+    <div id="alarmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 text-center max-w-sm w-full space-y-4 shadow-2xl transform transition-all animate-bounce">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-bell-ring"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800">Время пить таблетки!</h3>
+            <p class="text-sm text-slate-500">Не забудьте выпить лекарство и отметить прием в приложении.</p>
+            <div class="space-y-2">
+                <button onclick="confirmFromAlarm()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-md">
+                    Я выпил (+1)
+                </button>
+                <button onclick="closeAlarm()" class="w-full bg-slate-100 text-slate-600 font-medium py-2 rounded-xl">
+                    Закрыть
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script Logic -->
+    <script>
+        // --- 1. LOCAL STORAGE & DATA MANAGEMENT ---
+        const STORAGE_KEY = 'pill_tracker_logs_v1';
+        const REMINDER_KEY = 'pill_tracker_reminder_v1';
+
+        let currentCalendarDate = new Date();
+        let selectedDateStr = formatDateKey(new Date());
+
+        function getLogs() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveLogs(logs) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+        }
+
+        function logPill(customTimestamp = null) {
+            const logs = getLogs();
+            const now = customTimestamp ? new Date(customTimestamp) : new Date();
+
+            const newEntry = {
+                id: Date.now(),
+                timestamp: now.toISOString(),
+                dateStr: formatDateKey(now), // YYYY-MM-DD
+                timeStr: now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            logs.push(newEntry);
+            saveLogs(logs);
+
+            updateUI();
+            playBeep();
+        }
+
+        function deleteEntry(id) {
+            let logs = getLogs();
+            logs = logs.filter(item => item.id !== id);
+            saveLogs(logs);
+            updateUI();
+        }
+
+        function clearAllData() {
+            if (confirm("Вы уверены, что хотите удалить ВСЮ историю приемов?")) {
+                localStorage.removeItem(STORAGE_KEY);
+                updateUI();
+            }
+        }
+
+        function formatDateKey(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDisplayDate(dateStr) {
+            const [y, m, d] = dateStr.split('-');
+            const dateObj = new Date(y, m - 1, d);
+            const todayStr = formatDateKey(new Date());
+            
+            if (dateStr === todayStr) return 'Сегодня';
+            
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (dateStr === formatDateKey(yesterday)) return 'Вчера';
+
+            return dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        // --- CALENDAR LOGIC ---
+        function changeMonth(delta) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function selectDate(dateStr) {
+            selectedDateStr = dateStr;
+            renderCalendar();
+            renderSelectedDayLogs();
+        }
+
+        function renderCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+
+            // Month Header
+            const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+            document.getElementById('calendarMonthTitle').innerText = `${monthNames[month]} ${year}`;
+
+            const logs = getLogs();
+            
+            // Count pills per date
+            const pillCounts = {};
+            logs.forEach(log => {
+                pillCounts[log.dateStr] = (pillCounts[log.dateStr] || 0) + 1;
+            });
+
+            const firstDayOfMonth = new Date(year, month, 1);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            // Monday-first index calculation (0: Mon, ..., 6: Sun)
+            let startingDay = firstDayOfMonth.getDay() - 1;
+            if (startingDay === -1) startingDay = 6;
+
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            // Empty slots before 1st day of month
+            for (let i = 0; i < startingDay; i++) {
+                grid.innerHTML += `<div class="h-11"></div>`;
+            }
+
+            const todayStr = formatDateKey(new Date());
+
+            // Days of current month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayDate = new Date(year, month, day);
+                const dateStr = formatDateKey(dayDate);
+                const count = pillCounts[dateStr] || 0;
+                
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDateStr;
+
+                let bgClass = "bg-slate-50 border-slate-200 text-slate-700 hover:bg-indigo-50";
+                if (isSelected) {
+                    bgClass = "bg-indigo-600 text-white font-bold shadow-md ring-2 ring-indigo-400";
+                } else if (isToday) {
+                    bgClass = "bg-indigo-100 text-indigo-700 font-bold border-indigo-300";
+                }
+
+                let badgeHtml = '';
+                if (count > 0) {
+                    const badgeBg = isSelected ? 'bg-white text-indigo-700' : 'bg-emerald-500 text-white';
+                    badgeHtml = `<span class="absolute -top-1 -right-1 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm ${badgeBg}">${count}</span>`;
+                }
+
+                grid.innerHTML += `
+                    <button onclick="selectDate('${dateStr}')" class="relative h-11 rounded-xl border flex flex-col items-center justify-center text-xs transition duration-150 ${bgClass}">
+                        <span>${day}</span>
+                        ${badgeHtml}
+                    </button>
+                `;
+            }
+        }
+
+        function renderSelectedDayLogs() {
+            const logs = getLogs();
+            const dayLogs = logs.filter(log => log.dateStr === selectedDateStr);
+            const titleEl = document.getElementById('selectedDayTitle');
+            const logsEl = document.getElementById('selectedDayLogs');
+
+            titleEl.innerHTML = `<i class="fa-solid fa-calendar-day text-indigo-600"></i> ${formatDisplayDate(selectedDateStr)}`;
+
+            if (dayLogs.length === 0) {
+                logsEl.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">За этот день нет записей о приеме таблеток</div>`;
+                return;
+            }
+
+            logsEl.innerHTML = dayLogs.map(log => `
+                <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
+                    <span class="font-medium text-slate-700"><i class="fa-solid fa-clock text-indigo-500 mr-2"></i> ${log.timeStr}</span>
+                    <div class="flex items-center gap-3">
+                        <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-semibold">1 таблетка</span>
+                        <button onclick="deleteEntry(${log.id})" class="text-slate-300 hover:text-rose-500 transition">
+                            <i class="fa-solid fa-trash text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            `).reverse().join('');
+        }
+
+        // --- UI UPDATES ---
+        function updateUI() {
+            const logs = getLogs();
+            const todayKey = formatDateKey(new Date());
+            const todayLogs = logs.filter(log => log.dateStr === todayKey);
+
+            // Update Counter
+            document.getElementById('todayCount').innerText = todayLogs.length;
+
+            // Update Today Quick View
+            const todayLogList = document.getElementById('todayLogList');
+            if (todayLogs.length === 0) {
+                todayLogList.innerHTML = `<div class="text-center text-slate-400 py-3 text-xs">Сегодня приемов не зафиксировано</div>`;
+            } else {
+                todayLogList.innerHTML = todayLogs.map(log => `
+                    <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                        <span class="font-medium text-slate-700"><i class="fa-solid fa-clock text-indigo-400 mr-2"></i> ${log.timeStr}</span>
+                        <div class="flex items-center gap-3">
+                            <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-medium">1 шт.</span>
+                            <button onclick="deleteEntry(${log.id})" class="text-slate-400 hover:text-rose-500 px-1">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).reverse().join('');
+            }
+
+            renderCalendar();
+            renderSelectedDayLogs();
+        }
+
+        function saveLogs(logs) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+        }
+
+        function logPill(customTimestamp = null) {
+            const logs = getLogs();
+            const now = customTimestamp ? new Date(customTimestamp) : new Date();
+
+            const newEntry = {
+                id: Date.now(),
+                timestamp: now.toISOString(),
+                dateStr: formatDateKey(now), // YYYY-MM-DD
+                timeStr: now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            logs.push(newEntry);
+            saveLogs(logs);
+
+            updateUI();
+            
+            // Subtle sound feedback
+            playBeep();
+        }
+
+        function deleteEntry(id) {
+            let logs = getLogs();
+            logs = logs.filter(item => item.id !== id);
+            saveLogs(logs);
+            updateUI();
+        }
+
+        function clearAllData() {
+            if (confirm("Вы уверены, что хотите удалить ВСЮ историю приемов?")) {
+                localStorage.removeItem(STORAGE_KEY);
+                updateUI();
+            }
+        }
+
+        function formatDateKey(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDisplayDate(dateStr) {
+            const [y, m, d] = dateStr.split('-');
+            const dateObj = new Date(y, m - 1, d);
+            const todayStr = formatDateKey(new Date());
+            
+            if (dateStr === todayStr) return 'Сегодня';
+            
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (dateStr === formatDateKey(yesterday)) return 'Вчера';
+
+            return dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        // --- 2. UI UPDATES ---
+        function updateUI() {
+            const logs = getLogs();
+            const todayKey = formatDateKey(new Date());
+            const todayLogs = logs.filter(log => log.dateStr === todayKey);
+
+            // Update Counter
+            document.getElementById('todayCount').innerText = todayLogs.length;
+
+            // Update Today Quick View
+            const todayLogList = document.getElementById('todayLogList');
+            if (todayLogs.length === 0) {
+                todayLogList.innerHTML = `<div class="text-center text-slate-400 py-3 text-xs">Сегодня приемов не зафиксировано</div>`;
+            } else {
+                todayLogList.innerHTML = todayLogs.map(log => `
+                    <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span class="font-medium text-slate-700"><i class="fa-solid fa-clock text-indigo-400 mr-2"></i> ${log.timeStr}</span>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-medium">1 шт.</span>
+                            <button onclick="deleteEntry(${log.id})" class="text-slate-400 hover:text-rose-500 text-xs px-1">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).reverse().join('');
+            }
+
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const logs = getLogs();
+            const filterDate = document.getElementById('historyDateFilter').value;
+            const historyContainer = document.getElementById('historyContainer');
+
+            // Group by Date
+            const grouped = {};
+            logs.forEach(log => {
+                if (!grouped[log.dateStr]) {
+                    grouped[log.dateStr] = [];
+                }
+                grouped[log.dateStr].push(log);
+            });
+
+            // Sort dates descending
+            let dates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+            if (filterDate) {
+                dates = dates.filter(d => d === filterDate);
+            }
+
+            if (dates.length === 0) {
+                historyContainer.innerHTML = `<div class="text-center text-slate-400 py-8 text-sm">История пуста или нет записей за выбранный день</div>`;
+                return;
+            }
+
+            historyContainer.innerHTML = dates.map(dateKey => {
+                const dayLogs = grouped[dateKey];
+                const totalCount = dayLogs.length;
+                const displayDate = formatDisplayDate(dateKey);
+
+                const itemsHtml = dayLogs.map(log => `
+                    <div class="flex justify-between items-center py-2 border-b border-slate-100 last:border-0 text-xs">
+                        <span class="text-slate-600 font-medium"><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> ${log.timeStr}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-500">1 таблетка</span>
+                            <button onclick="deleteEntry(${log.id})" class="text-slate-300 hover:text-rose-500 ml-1">
+                                <i class="fa-solid fa-xmark text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).reverse().join('');
+
+                return `
+                    <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                        <div class="flex justify-between items-center font-bold text-slate-700 text-sm mb-2 border-b border-slate-200 pb-2">
+                            <span>${displayDate}</span>
+                            <span class="bg-indigo-100 text-indigo-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">Всего: ${totalCount} шт.</span>
+                        </div>
+                        <div class="space-y-1">
+                            ${itemsHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- 3. TAB NAVIGATION ---
+        function switchTab(tab) {
+            const tabToday = document.getElementById('tabToday');
+            const tabHistory = document.getElementById('tabHistory');
+            const navToday = document.getElementById('navToday');
+            const navHistory = document.getElementById('navHistory');
+
+            if (tab === 'today') {
+                tabToday.classList.remove('hidden');
+                tabHistory.classList.add('hidden');
+                navToday.className = 'flex flex-col items-center text-indigo-600 font-semibold transition';
+                navHistory.className = 'flex flex-col items-center text-slate-400 hover:text-indigo-600 font-medium transition';
+            } else {
+                tabToday.classList.add('hidden');
+                tabHistory.classList.remove('hidden');
+                navToday.className = 'flex flex-col items-center text-slate-400 hover:text-indigo-600 font-medium transition';
+                navHistory.className = 'flex flex-col items-center text-indigo-600 font-semibold transition';
+                renderHistory();
+            }
+        }
+
+        // --- 4. REMINDER & ALARM SYSTEM ---
+        let reminderInterval = null;
+
+        function saveReminder() {
+            const timeVal = document.getElementById('reminderTime').value;
+            if (!timeVal) {
+                alert("Пожалуйста, выберите время напоминания.");
+                return;
+            }
+
+            localStorage.setItem(REMINDER_KEY, timeVal);
+            updateReminderStatus();
+            requestNotificationPermission();
+            alert(`Напоминание установлено на ${timeVal}`);
+        }
+
+        function updateReminderStatus() {
+            const savedTime = localStorage.getItem(REMINDER_KEY);
+            const statusEl = document.getElementById('reminderStatus');
+            const inputEl = document.getElementById('reminderTime');
+
+            if (savedTime) {
+                statusEl.innerText = `Вкл: ${savedTime}`;
+                statusEl.className = 'text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium';
+                inputEl.value = savedTime;
+            } else {
+                statusEl.innerText = 'Выкл';
+                statusEl.className = 'text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium';
+            }
+        }
+
+        function startReminderChecker() {
+            setInterval(() => {
+                const savedTime = localStorage.getItem(REMINDER_KEY);
+                if (!savedTime) return;
+
+                const now = new Date();
+                const currentHours = String(now.getHours()).padStart(2, '0');
+                const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+                const currentTime = `${currentHours}:${currentMinutes}`;
+
+                // Trigger alarm when time matches exactly at second 0
+                if (currentTime === savedTime && now.getSeconds() < 2) {
+                    triggerAlarm();
+                }
+            }, 1000);
+        }
+
+        function triggerAlarm() {
+            document.getElementById('alarmModal').classList.remove('hidden');
+            playBeep();
+
+            // Native Browser Notification if permitted
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("Мои Таблетки", {
+                    body: "Пора принять таблетку! Откройте приложение и подтвердите прием.",
+                    icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💊</text></svg>"
+                });
+            }
+        }
+
+        function closeAlarm() {
+            document.getElementById('alarmModal').classList.add('hidden');
+        }
+
+        function confirmFromAlarm() {
+            logPill();
+            closeAlarm();
+        }
+
+        function requestNotificationPermission() {
+            if ("Notification" in window && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+        }
+
+        function playBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.4);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start();
+                osc.stop(ctx.currentTime + 0.4);
+            } catch (e) {
+                // AudioContext restricted before gesture
+            }
+        }
+
+        // --- 5. PWA MANIFEST & SERVICE WORKER INJECTION ---
+        function initPwaFeatures() {
+            // Generate dynamic Web App Manifest
+            const manifestObj = {
+                name: "Мои Таблетки",
+                short_name: "Таблетки",
+                start_url: "./pill_tracker_pwa.html",
+                display: "standalone",
+                background_color: "#ffffff",
+                theme_color: "#4f46e5",
+                icons: [
+                    {
+                        src: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%234f46e5%22/><text y=%22.85em%22 x=%2210%22 font-size=%2280%22>💊</text></svg>",
+                        sizes: "192x192 512x512",
+                        type: "image/svg+xml"
+                    }
+                ]
+            };
+
+            const manifestStr = JSON.stringify(manifestObj);
+            const blob = new Blob([manifestStr], { type: 'application/json' });
+            const manifestUrl = URL.createObjectURL(blob);
+            document.getElementById('manifest-placeholder').setAttribute('href', manifestUrl);
+
+            // Register Service Worker for Offline access
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    const CACHE_NAME = 'pill-tracker-v1';
+                    self.addEventListener('install', (e) => {
+                        e.waitUntil(
+                            caches.open(CACHE_NAME).then((cache) => cache.addAll(['./pill_tracker_pwa.html']))
+                        );
+                    });
+                    self.addEventListener('fetch', (e) => {
+                        e.respondWith(
+                            caches.match(e.request).then((res) => res || fetch(e.request))
+                        );
+                    });
+                `;
+                const swBlob = new Blob([swCode], { type: 'text/javascript' });
+                const swUrl = URL.createObjectURL(swBlob);
+                navigator.serviceWorker.register(swUrl).catch(err => console.log('SW reg error:', err));
+            }
+
+            // Detect iOS Safari for custom install banner
+            const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+            if (isIos && !isStandalone) {
+                document.getElementById('iosInstruction').classList.remove('hidden');
+            }
+        }
+
+        // PWA Install Prompt handling
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const btn = document.getElementById('pwaInstallBtn');
+            btn.classList.remove('hidden');
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        document.getElementById('pwaInstallBtn').classList.add('hidden');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        // --- 6. INITIALIZATION ---
+        window.onload = function() {
+            initPwaFeatures();
+            updateUI();
+            updateReminderStatus();
+            startReminderChecker();
+        };
+    </script>
+</body>
+</html>
